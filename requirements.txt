@@ -1,0 +1,12 @@
+gliner
+pytesseract
+nltk
+spacy
+xmltodict
+transformers
+datasets
+easyocr
+PyMuPDF
+pypdfium2
+fpdf
+flask

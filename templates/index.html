@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PII Detection and Masking</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon-left">🔍</div>
+            <h1>PII Detection and Masking</h1>
+            <div class="icon-right">⚙️</div>
+        </div>
+        <form id="uploadForm" action="/process" method="post" enctype="multipart/form-data">
+            <div class="upload-section">
+                <label for="file">Upload a file:</label>
+                <input type="file" id="file" name="file" required>
+                <p id="file-name"></p>
+            </div>
+            <div class="right-section">
+                <label for="file_type">Select File Type:</label>
+                <select id="file_type" name="file_type" required>
+                    <option value="Document">Document</option>
+                    <option value="Passport">Passport</option>
+                    <option value="PAN Card">PAN Card</option>
+                    <option value="Others">Others</option>
+                    <option value="Audio">Audio</option>
+                </select>
+                <div id="checkboxes">
+                    <!-- Dynamic checkboxes will appear here -->
+                </div>
+                <label for="custom_labels">Add Custom Labels:</label>
+                <input type="text" id="custom_labels" name="custom_labels" placeholder="Enter comma-separated labels">
+            </div>
+            <button type="submit">Upload</button>
+        </form>
+    </div>
+    <script>
+        const fileTypeSelect = document.getElementById('file_type');
+        const checkboxesDiv = document.getElementById('checkboxes');
+
+        const labels = {
+            "Document": ["Full Address", "Social Security Number", "Phone Number"],
+            "Passport": ["Passport Number", "Date of Birth", "Nationality"],
+            "PAN Card": ["PAN Number", "Full Name"],
+            "Others": [],
+            "Audio": ["Full Address", "Phone Number"]
+        };
+
+        fileTypeSelect.addEventListener('change', () => {
+            checkboxesDiv.innerHTML = "";
+            const selectedLabels = labels[fileTypeSelect.value] || [];
+            selectedLabels.forEach(label => {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = 'labels';
+                checkbox.value = label;
+                checkbox.id = label;
+
+                const labelElement = document.createElement('label');
+                labelElement.htmlFor = label;
+                labelElement.textContent = label;
+
+                checkboxesDiv.appendChild(checkbox);
+                checkboxesDiv.appendChild(labelElement);
+                checkboxesDiv.appendChild(document.createElement('br'));
+            });
+        });
+    </script>
+</body>
+</html>

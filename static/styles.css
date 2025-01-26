@@ -1,0 +1,19 @@
+.result-section {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.left-section, .right-section {
+    width: 48%;
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: monospace;
+}

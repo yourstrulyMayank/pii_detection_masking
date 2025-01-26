@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PII Detection Results</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon-left">🔍</div>
+            <h1>PII Detection Results</h1>
+            <div class="icon-right">⚙️</div>
+        </div>
+        <div class="result-section">
+            <div class="left-section">
+                <h3>Original Document</h3>
+                {% if file_type == 'Audio' %}
+                <audio controls>
+                    <source src="/uploads/{{ file_url }}" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+                {% else %}
+                <pre>{{ original }}</pre>
+                {% endif %}
+            </div>
+            <div class="right-section">
+                <h3>Masked Document</h3>
+                <pre>{{ masked }}</pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
