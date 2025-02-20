@@ -5,69 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PII Detection and Masking</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="/static/scripts.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="icon-left">🔍</div>
-            <h1>PII Detection and Masking</h1>
-            <div class="icon-right">⚙️</div>
+
+    <!-- Top Images -->
+    <header>
+        <img src="/static/infosys.png" alt="Left Logo">
+        <img src="/static/logo.png" alt="Right Logo">
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <a href="/">PII Detection & Masking</a>        
+    </nav>
+
+    <!-- Upload Section -->
+    <div class="container2">
+        <div class="header2">
+            <h1>PII Detection & Masking</h1>
         </div>
-        <form id="uploadForm" action="/process" method="post" enctype="multipart/form-data">
-            <div class="upload-section">
-                <label for="file">Upload a file:</label>
-                <input type="file" id="file" name="file" required>
-                <p id="file-name"></p>
-            </div>
-            <div class="right-section">
-                <label for="file_type">Select File Type:</label>
-                <select id="file_type" name="file_type" required>
-                    <option value="Document">Document</option>
-                    <option value="Passport">Passport</option>
-                    <option value="PAN Card">PAN Card</option>
-                    <option value="Others">Others</option>
-                    <option value="Audio">Audio</option>
-                </select>
-                <div id="checkboxes">
-                    <!-- Dynamic checkboxes will appear here -->
+
+        <div class="upload-box">
+            <h2>Securely Mask Your Sensitive Data</h2>
+            <p>Upload your document or audio file, select sensitive data, and let AI handle the rest.</p>
+
+            <form id="uploadForm" action="/process" method="post" enctype="multipart/form-data">
+                <div class="file-upload">
+                    <input type="file" id="file" name="file" required hidden>
+                    <label for="file" class="upload-btn">Choose a file</label>
+                    <span id="file-name">No file selected</span>
                 </div>
-                <label for="custom_labels">Add Custom Labels:</label>
-                <input type="text" id="custom_labels" name="custom_labels" placeholder="Enter comma-separated labels">
-            </div>
-            <button type="submit">Upload</button>
-        </form>
+
+                <div class="dropdown">
+                    <label for="file_type">File Type</label>
+                    <select id="file_type" name="file_type" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="Document">Document</option>
+                        <option value="Passport">Passport</option>
+                        <option value="PAN Card">PAN Card</option>
+                        <option value="Others">Others</option>
+                        <option value="Audio">Audio</option>
+                    </select>
+                </div>
+
+                <div id="checkboxes" class="checkbox-group">
+                    <!-- Dynamic checkboxes populate here -->
+                </div>
+
+                <div class="custom-label">
+                    <label for="custom_labels">Custom Labels</label>
+                    <input type="text" id="custom_labels" name="custom_labels" placeholder="Enter comma-separated labels">
+                </div>
+
+                <button type="submit" class="upload-btn primary-btn">Upload & Process</button>
+            </form>
+        </div>
     </div>
-    <script>
-        const fileTypeSelect = document.getElementById('file_type');
-        const checkboxesDiv = document.getElementById('checkboxes');
 
-        const labels = {
-            "Document": ["Full Address", "Social Security Number", "Phone Number"],
-            "Passport": ["Passport Number", "Date of Birth", "Nationality"],
-            "PAN Card": ["PAN Number", "Full Name"],
-            "Others": [],
-            "Audio": ["Full Address", "Phone Number"]
-        };
-
-        fileTypeSelect.addEventListener('change', () => {
-            checkboxesDiv.innerHTML = "";
-            const selectedLabels = labels[fileTypeSelect.value] || [];
-            selectedLabels.forEach(label => {
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.name = 'labels';
-                checkbox.value = label;
-                checkbox.id = label;
-
-                const labelElement = document.createElement('label');
-                labelElement.htmlFor = label;
-                labelElement.textContent = label;
-
-                checkboxesDiv.appendChild(checkbox);
-                checkboxesDiv.appendChild(labelElement);
-                checkboxesDiv.appendChild(document.createElement('br'));
-            });
-        });
-    </script>
 </body>
 </html>

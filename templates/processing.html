@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing...</title>
+    <script>
+        function checkStatus() {
+            fetch("{{ url_for('check_status', filename=filename) }}")
+                .then(response => response.text())
+                .then(status => {
+                    if (status.includes("result")) {
+                        window.location.href = status;
+                    } else if (status !== "Processing...") {
+                        document.getElementById("status").innerText = status;
+                    } else {
+                        setTimeout(checkStatus, 2000); // Retry after 2 seconds
+                    }
+                });
+        }
+
+        window.onload = checkStatus;
+    </script>
+</head>
+<body>
+    <h2>Processing File...</h2>
+    <p id="status">Please wait while we process your file.</p>
+</body>
+</html>
