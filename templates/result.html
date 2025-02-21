@@ -3,31 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PII Detection Results</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <title>Processed Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="icon-left">🔍</div>
-            <h1>PII Detection Results</h1>
-            <div class="icon-right">⚙️</div>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">PII Masker</a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
         </div>
-        <div class="result-section">
-            <div class="left-section">
-                <h3>Original Document</h3>
-                {% if file_type == 'Audio' %}
-                <audio controls>
-                    <source src="/uploads/{{ file_url }}" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                </audio>
-                {% else %}
-                <pre>{{ original }}</pre>
-                {% endif %}
+    </nav>
+
+    <!-- Result Section -->
+    <div class="container result-container">
+        <h1 class="page-title">Processing Results</h1>
+        <div class="image-comparison">
+            <!-- Original Image -->
+            <div class="image-section">
+                <h2>Original File</h2>
+                <img src="{{ original_file_url }}" alt="Original Image">
+
             </div>
-            <div class="right-section">
-                <h3>Masked Document</h3>
-                <pre>{{ masked }}</pre>
+
+            <!-- Masked Image -->
+            <div class="image-section">
+                <h2>Masked File</h2>
+                <img src="{{ masked_file_url }}" alt="Masked Image">
             </div>
         </div>
     </div>

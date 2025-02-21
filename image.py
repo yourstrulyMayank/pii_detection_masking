@@ -15,21 +15,22 @@ from common_functions import draw_black_rectangles
 
 
 
-def main(image_path, labels):
-    # Load GLiNER model for PII detection
-    model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1")
+def main(image_path, labels, model, reader):
+    try:
+        original_image = cv2.imread(image_path)
+        if original_image is None:
+            raise FileNotFoundError(f"Image not found at {image_path}")
 
-    # Initialize EasyOCR reader for text extraction
-    reader = easyocr.Reader(['en'])
+        result = reader.readtext(image_path, width_ths=0.5)
+        processed_image = original_image.copy()
 
-    original_image = cv2.imread(image_path)
-    result = reader.readtext(image_path, width_ths=0.5)
-    processed_image = original_image.copy()
+        draw_black_rectangles(processed_image, result, labels, model)
 
-    
-    draw_black_rectangles(processed_image, result, labels, model)
+        return processed_image  # Ensure this is a valid image
+    except Exception as e:
+        print(f"Error in image processing: {e}")
+        return None
 
-    return processed_image
 
 if __name__ == "__main__":
     try:
