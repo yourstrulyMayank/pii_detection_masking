@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processed Database Extract</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">PII Masker</a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Result Section -->
+    <div class="container result-container">
+        <h1 class="page-title">Database Processing Results</h1>
+
+        <div class="json-container">
+            <div class="json-section">
+                <h2>Original Data</h2>
+                <pre>{{ original_json }}</pre>
+            </div>
+
+            <div class="json-section">
+                <h2>Redacted Data</h2>
+                <pre>{{ redacted_json }}</pre>
+            </div>
+        </div>
+
+        <a href="/" class="btn">Upload Another File</a>
+    </div>
+</body>
+</html>

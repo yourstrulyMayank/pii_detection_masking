@@ -5,12 +5,16 @@ document.getElementById("file").addEventListener("change", function () {
 const fileTypeSelect = document.getElementById("file_type");
 const checkboxesDiv = document.getElementById("checkboxes");
 
+// Updated labels based on new file type categories
 const labels = {
-    "Document": ["Full Address", "Social Security Number", "Phone Number"],
+    "PDF Document": ["Full Address", "Social Security Number", "Phone Number"],
     "Passport": ["Passport Number", "Date of Birth", "Nationality"],
+    "Driving License": ["License Number", "Expiration Date", "Full Name"],
     "PAN Card": ["PAN Number", "Full Name"],
-    "Others": [],
-    "Audio": ["Full Address", "Phone Number"]
+    "Local Card": ["ID Number", "Issuing Authority"],
+    "Audio": ["Full Address", "Phone Number", "Speaker Identification"],
+    "Excel File": ["Names", "Account Numbers", "Transaction Details"],
+    "Database Extract": ["User IDs", "Emails", "Sensitive Data"]
 };
 
 fileTypeSelect.addEventListener("change", () => {

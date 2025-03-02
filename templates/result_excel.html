@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processed Excel Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">PII Masker</a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Result Section -->
+    <div class="container result-container">
+        <h1 class="page-title">Excel Processing Results</h1>
+
+        <div class="image-comparison">
+            <!-- Original Excel Snippet -->
+            <div class="image-section">
+                <h2>Original Excel Preview</h2>
+                <img src="{{ original_file_url }}" alt="Original Excel Snippet">
+            </div>
+
+            <!-- Redacted Excel Snippet -->
+            <div class="image-section">
+                <h2>Masked Excel Preview</h2>
+                <img src="{{ masked_file_url }}" alt="Masked Excel Snippet">
+            </div>
+        </div>
+
+        <h2>Redacted Cells:</h2>
+        <p>{{ redacted_cells }}</p>
+
+        <a href="/" class="btn">Upload Another File</a>
+    </div>
+</body>
+</html>

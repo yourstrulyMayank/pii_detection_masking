@@ -4,26 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Processing...</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
     <script>
         function checkStatus() {
+            var filename = "{{ filename }}";
+            if (!filename) {
+                document.getElementById("status").innerText = "Error: No filename provided.";
+                return;
+            }
+    
             fetch("{{ url_for('check_status', filename=filename) }}")
                 .then(response => response.text())
                 .then(status => {
                     if (status.includes("result")) {
                         window.location.href = status;
-                    } else if (status !== "Processing...") {
-                        document.getElementById("status").innerText = status;
                     } else {
-                        setTimeout(checkStatus, 2000); // Retry after 2 seconds
+                        document.getElementById("status").innerText = status;
+                        setTimeout(checkStatus, 2000);
                     }
+                })
+                .catch(error => {
+                    console.error("Error checking status:", error);
+                    document.getElementById("status").innerText = "An error occurred. Please refresh.";
                 });
         }
-
+    
         window.onload = checkStatus;
     </script>
+    
 </head>
 <body>
-    <h2>Processing File...</h2>
-    <p id="status">Please wait while we process your file.</p>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">PII Masker</a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Processing Status -->
+    <div class="container processing-container">
+        <h1 class="page-title">Processing File...</h1>
+        <p id="status">Please wait while we process your file.</p>
+        <div class="loading-spinner"></div>
+    </div>
 </body>
 </html>

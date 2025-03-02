@@ -41,13 +41,29 @@
                     <label for="file_type">File Type</label>
                     <select id="file_type" name="file_type" required>
                         <option value="" disabled selected>Select</option>
-                        <option value="Document">Document</option>
-                        <option value="Passport">Passport</option>
-                        <option value="PAN Card">PAN Card</option>
-                        <option value="Others">Others</option>
+                
+                        <!-- PDF Document -->
+                        <option value="PDF Document">PDF Document</option>
+                
+                        <!-- ID Card Image with Indented Subcategories -->
+                        <optgroup label="ID Card Image">
+                            <option value="Passport">Passport</option>
+                            <option value="Driving License">Driving License</option>
+                            <option value="PAN Card">PAN Card</option>
+                            <option value="Local Card">Local Card</option>
+                        </optgroup>
+                
+                        <!-- Audio -->
                         <option value="Audio">Audio</option>
+                
+                        <!-- Excel File -->
+                        <option value="Excel File">Excel File</option>
+                
+                        <!-- Database Extract -->
+                        <option value="Database Extract">Database Extract (.json etc)</option>
                     </select>
                 </div>
+                
 
                 <div id="checkboxes" class="checkbox-group">
                     <!-- Dynamic checkboxes populate here -->
