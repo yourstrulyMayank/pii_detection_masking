@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 from image import main as process_image
 from document import main as process_document
@@ -114,31 +114,33 @@ def check_status(filename):
     status = processing_status.get(filename, "processing")
     
     if status == "done":
-        # Fetch file type from processing_status dictionary
         file_type = processing_status.get(f"{filename}_type", "Unknown")
         original_file_url = os.path.join(UPLOAD_FOLDER, filename)
         masked_file_url = os.path.join(MASKED_FOLDER, filename)
-        original_file_url = original_file_url.replace("\\", "/")
-        masked_file_url = masked_file_url.replace("\\", "/")
+
+        # Ensure paths use forward slashes for URLs
+        original_file_url = '/' + original_file_url.replace("\\", "/").lstrip('/')
+        masked_file_url = '/' + masked_file_url.replace("\\", "/").lstrip('/')
+
         if file_type in ['PDF Document', 'Passport', 'Driving License', 'PAN Card', 'Local Card']:
-            return redirect(url_for('result_image', filename=filename, 
-                        original_file_url='/' + original_file_url.lstrip('/'), 
-                        masked_file_url='/' + masked_file_url.lstrip('/')))
+            return jsonify({"status": "done", "redirect": url_for('result_image', filename=filename, 
+                                                                  original_file_url=original_file_url, 
+                                                                  masked_file_url=masked_file_url)})
         elif file_type == "Audio":
-            return redirect(url_for('result_audio', filename=filename))
+            return jsonify({"status": "done", "redirect": url_for('result_audio', filename=filename)})
         elif file_type == "Excel File":
-            return redirect(url_for('result_excel', filename=filename))
+            return jsonify({"status": "done", "redirect": url_for('result_excel', filename=filename)})
         elif file_type == "Database Extract":
-            return redirect(url_for('result_database', filename=filename))
+            return jsonify({"status": "done", "redirect": url_for('result_database', filename=filename)})
         elif file_type == "Text Document":
-            return redirect(url_for('result_text', filename=filename))
+            return jsonify({"status": "done", "redirect": url_for('result_text', filename=filename)})
         else:
-            return "Unknown file type"
-    
+            return jsonify({"status": "error", "message": "Unknown file type"})
+
     elif status == "failed":
-        return "Processing failed. Please try again."
-    
-    return "Processing..."
+        return jsonify({"status": "failed", "message": "Processing failed. Please try again."})
+
+    return jsonify({"status": "processing"})
 
 
 # @app.route('/result')

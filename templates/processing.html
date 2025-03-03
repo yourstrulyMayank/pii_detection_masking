@@ -13,14 +13,16 @@
                 document.getElementById("status").innerText = "Error: No filename provided.";
                 return;
             }
-    
+        
             fetch("{{ url_for('check_status', filename=filename) }}")
-                .then(response => response.text())
-                .then(status => {
-                    if (status.includes("result")) {
-                        window.location.href = status;
+                .then(response => response.json())  // Parse response as JSON
+                .then(data => {
+                    if (data.status === "done") {
+                        window.location.href = data.redirect;  // Redirect to result page
+                    } else if (data.status === "failed") {
+                        document.getElementById("status").innerText = data.message;
                     } else {
-                        document.getElementById("status").innerText = status;
+                        document.getElementById("status").innerText = "Processing...";
                         setTimeout(checkStatus, 2000);
                     }
                 })
@@ -29,8 +31,9 @@
                     document.getElementById("status").innerText = "An error occurred. Please refresh.";
                 });
         }
-    
+        
         window.onload = checkStatus;
+        
     </script>
     
 </head>
