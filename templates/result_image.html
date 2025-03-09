@@ -7,21 +7,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="container">
-            <a href="/" class="logo">PII Masker</a>
-            <ul class="nav-links">
-                <li><a href="/">Home</a></li>
-                <li><a href="#">About</a></li>
-                <li><a href="#">Contact</a></li>
-            </ul>
-        </div>
+    <!-- Top Images -->
+    <header>
+        <img src="/static/infosys.png" alt="Left Logo">
+        <img src="/static/logo.png" alt="Right Logo">
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <a href="/">PII Detection & Masking</a>        
     </nav>
 
     <!-- Result Section -->
     <div class="container result-container">
-        <h1 class="page-title">Processing Results</h1>
+        <h1 class="page-title">Results</h1>
         <div class="image-comparison">
             <!-- Original Image -->
             <div class="image-section">
@@ -35,6 +34,7 @@
                 <img src="{{ masked_file_url }}" alt="Masked Image">
             </div>
         </div>
+        <br>
         <a href="/" class="btn">Upload Another File</a>
     </div>
 </body>

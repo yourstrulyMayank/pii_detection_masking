@@ -11,10 +11,25 @@ import threading
 import time
 from gliner import GLiNER
 import easyocr
-
+# import whisper
+# from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+# import torch
 app = Flask(__name__)
+
 model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1")
-reader = easyocr.Reader(['en'])
+
+
+# device = "cuda" if torch.cuda.is_available() else "cpu"
+# torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+# audio_model_path = "./models/whisper-large-v3"
+reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/")
+# whisper_model = AutoModelForSpeechSeq2Seq.from_pretrained(
+#         audio_model_path, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+#     )
+# whisper_model.to(device)
+
+# # Initialize processor and ASR pipeline
+# processor = AutoProcessor.from_pretrained(audio_model_path)
 
 # Folder setup
 UPLOAD_FOLDER = 'uploads'
@@ -82,7 +97,12 @@ def process_in_background(file_path, labels, file_type, filename):
 
         elif file_type == "Audio":
             print(f'Processing audio: {filename}')
-            processed_file = process_audio(file_path)
+            redacted_text = process_audio(file_path, labels, model)
+            text_file_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
+            print(f'text_file_path: {text_file_path}')
+            with open(text_file_path, "w", encoding="utf-8") as text_file:
+                text_file.write(redacted_text)
+            processed_file = text_file_path
 
         # elif file_type == "Excel File":
         #     print(f'Processing Excel file: {filename}')
@@ -127,7 +147,12 @@ def check_status(filename):
                                                                   original_file_url=original_file_url, 
                                                                   masked_file_url=masked_file_url)})
         elif file_type == "Audio":
-            return jsonify({"status": "done", "redirect": url_for('result_audio', filename=filename)})
+            text_file_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
+            redacted_text = ""
+            if os.path.exists(text_file_path):
+                with open(text_file_path, "r", encoding="utf-8") as text_file:
+                    redacted_text = text_file.read()
+            return jsonify({"status": "done", "redirect": url_for('result_audio', filename=filename, original_file_url=original_file_url, redacted_text=redacted_text)})
         elif file_type == "Excel File":
             return jsonify({"status": "done", "redirect": url_for('result_excel', filename=filename)})
         elif file_type == "Database Extract":

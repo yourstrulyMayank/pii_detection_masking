@@ -175,7 +175,7 @@ select {
 
 /* Navbar */
 .navbar {
-    background-color: #1a1a1a;
+    background-color: #0A84FF;
     color: white;
     padding: 15px 0;
     display: flex;
@@ -221,19 +221,17 @@ select {
 }
 
 .image-comparison {
-    display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    gap: 20px;
+    display: flex;              /* Enables horizontal layout */
+    justify-content: center;    /* Centers the images */
+    align-items: center;        /* Aligns them vertically */
+    gap: 20px;                  /* Adds spacing between images */
+    flex-wrap: wrap;            /* Allows wrapping if needed */
 }
 
 .image-section {
-    flex: 1;
-    min-width: 45%;
-    background-color: #f4f4f4;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;         /* Centers the text and image */
+    flex: 1;                    /* Ensures equal space distribution */
+    max-width: 45%;             /* Limits width to prevent overflow */
 }
 
 .image-section h2 {
@@ -242,7 +240,17 @@ select {
 }
 
 .image-section img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 10px;
+    max-width: 100%;            /* Ensures image does not exceed div */
+    height: auto;               /* Maintains aspect ratio */
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+}
+@media (max-width: 768px) {
+    .image-comparison {
+        flex-direction: column;  /* Stacks images vertically */
+    }
+    .image-section {
+        max-width: 100%;         /* Full width for mobile */
+    }
 }

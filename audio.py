@@ -13,31 +13,59 @@ import spacy
 import sys
 from common_functions import redact_pii
 from text import main
+import whisper
+import subprocess
+import ffmpeg
+import os
+import sys
 
+# Define the relative path to FFmpeg bin
+ffmpeg_relative_path = os.path.join(os.path.dirname(__file__), "ffmpeg", "bin")
+
+# Add FFmpeg to system PATH
+os.environ["PATH"] = ffmpeg_relative_path + os.pathsep + os.environ["PATH"]
+
+# Verify FFmpeg installation
+os.system("ffmpeg -version")
 
 # Main function to handle audio file input
-def main(audio_file_path, labels):
+def main(audio_file_path, labels, model):
     # Load GLiNER model for PII detection
     ## Try to download it in setup.sh
-    model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1") 
+    
 
-    nlp = spacy.load('en_core_web_lg')
+    # nlp = spacy.load('en_core_web_lg')
+    nlp = spacy.load('en_core_web_sm')
 
     # Setup device and model for automatic speech recognition (ASR)
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
-    ## Try to download it in setup.sh
-    model_id = "openai/whisper-large-v3"
-
-    # Load Whisper model for speech-to-text
+    # Try to download it in setup.sh
+    # audio_model_id = "openai/whisper-large-v3"
+    # audio_model_id = whisper_model
+    audio_model_path = "./models/whisper-large-v3"
+    print('Model load started')
+    try:
+        subprocess.run(["ffmpeg", "-version"], check=True)
+        print("FFmpeg is installed and working!")
+    except FileNotFoundError:
+        print("Error: FFmpeg is not found. Ensure it’s installed and in PATH.")
     whisper_model = AutoModelForSpeechSeq2Seq.from_pretrained(
-        model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
-    )
+        audio_model_path, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+        )
     whisper_model.to(device)
 
     # Initialize processor and ASR pipeline
-    processor = AutoProcessor.from_pretrained(model_id)
+    processor = AutoProcessor.from_pretrained(audio_model_path)
+    # Load Whisper model for speech-to-text
+    # whisper_model = AutoModelForSpeechSeq2Seq.from_pretrained(
+    #     audio_model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+    # )
+    # whisper_model.to(device)
+
+    # # Initialize processor and ASR pipeline
+    # processor = AutoProcessor.from_pretrained(audio_model_id)
 
     pipe = pipeline(
         "automatic-speech-recognition",
@@ -54,6 +82,7 @@ def main(audio_file_path, labels):
 
     # Transcribe audio using Whisper pipeline
     result = pipe(audio_file_path)
+    print('Model loaded')
     transcribed_text = result['text']
 
     

@@ -11,3 +11,6 @@ PyMuPDF
 pypdfium2
 fpdf
 flask
+accelerate>=0.26.0
+ffmpeg 
+openai-whisper
