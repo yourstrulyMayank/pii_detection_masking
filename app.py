@@ -11,25 +11,22 @@ import threading
 import time
 from gliner import GLiNER
 import easyocr
-# import whisper
-# from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
-# import torch
+import torch
 app = Flask(__name__)
-
-model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1")
-
-
 # device = "cuda" if torch.cuda.is_available() else "cpu"
-# torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-# audio_model_path = "./models/whisper-large-v3"
-reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/")
-# whisper_model = AutoModelForSpeechSeq2Seq.from_pretrained(
-#         audio_model_path, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
-#     )
-# whisper_model.to(device)
+device = 'cpu'
+if device == 'cuda':
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
+print('device:', device)
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1").to(device)
 
-# # Initialize processor and ASR pipeline
-# processor = AutoProcessor.from_pretrained(audio_model_path)
+if device == 'cuda':
+    reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/", gpu=True)
+else:
+    reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/")
+
 
 # Folder setup
 UPLOAD_FOLDER = 'uploads'
@@ -206,10 +203,25 @@ def result_image(filename):
                            masked_file_url=masked_file_url)
 
 
+# @app.route('/result_audio/<filename>')
+# def result_audio(filename):
+#     """Display result page for audio processing."""
+#     return render_template('result_audio.html', filename=filename)
 @app.route('/result_audio/<filename>')
 def result_audio(filename):
     """Display result page for audio processing."""
-    return render_template('result_audio.html', filename=filename)
+    original_file_url = os.path.join(UPLOAD_FOLDER, filename)
+    text_file_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
+    
+    redacted_text = ""
+    if os.path.exists(text_file_path):
+        with open(text_file_path, "r", encoding="utf-8") as text_file:
+            redacted_text = text_file.read()
+
+    return render_template('result_audio.html', filename=filename, 
+                           original_file_url="/" + original_file_url.replace("\\", "/").lstrip('/'), 
+                           redacted_text=redacted_text)
+
 
 @app.route('/result_excel/<filename>')
 def result_excel(filename):

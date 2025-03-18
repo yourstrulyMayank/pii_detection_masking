@@ -21,21 +21,26 @@
     <!-- Result Section -->
     <div class="container result-container">
         <h1 class="page-title">Audio Processing Results</h1>
-        
-        <div class="audio-section">
-            <h2>Original Audio</h2>
-            <audio controls>
-                <source src="{{ original_file_url }}" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
+    
+        <div class="result-content">
+            <div class="audio-section">
+                <h2>Original Audio</h2>
+                <audio controls>
+                    <source src="{{ original_file_url }}" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+    
+            <div class="text-section">
+                <h2>Redacted Text</h2>
+                <p>{{ redacted_text }}</p>
+            </div>
         </div>
-
-        <div class="audio-section">
-            <h2>Redacted Text</h2>
-            <p>{{ redacted_text }}</p>
-        </div>
-
+        <br>
+        <br>
+        <br>
         <a href="/" class="btn">Upload Another File</a>
     </div>
+    <a href="/" class="back-home-btn">← Back to Home</a>
 </body>
 </html>

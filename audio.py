@@ -43,8 +43,9 @@ def main(audio_file_path, labels, model):
 
     # Try to download it in setup.sh
     # audio_model_id = "openai/whisper-large-v3"
-    # audio_model_id = whisper_model
-    audio_model_path = "./models/whisper-large-v3"
+    # audio_model_id = "openai/whisper-small"
+    
+    audio_model_path = "./models/whisper-small"
     print('Model load started')
     try:
         subprocess.run(["ffmpeg", "-version"], check=True)
@@ -56,15 +57,15 @@ def main(audio_file_path, labels, model):
         )
     whisper_model.to(device)
 
-    # Initialize processor and ASR pipeline
+    # # Initialize processor and ASR pipeline
     processor = AutoProcessor.from_pretrained(audio_model_path)
     # Load Whisper model for speech-to-text
     # whisper_model = AutoModelForSpeechSeq2Seq.from_pretrained(
-    #     audio_model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+        # audio_model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
     # )
     # whisper_model.to(device)
 
-    # # Initialize processor and ASR pipeline
+    # Initialize processor and ASR pipeline
     # processor = AutoProcessor.from_pretrained(audio_model_id)
 
     pipe = pipeline(
@@ -73,8 +74,8 @@ def main(audio_file_path, labels, model):
         tokenizer=processor.tokenizer,
         feature_extractor=processor.feature_extractor,
         max_new_tokens=128,
-        chunk_length_s=30,
-        batch_size=16,
+        chunk_length_s=10,
+        batch_size=2,
         return_timestamps=True,
         torch_dtype=torch_dtype,
         device=device,
