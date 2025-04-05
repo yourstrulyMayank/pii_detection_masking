@@ -14,3 +14,8 @@ flask
 accelerate>=0.26.0
 ffmpeg 
 openai-whisper
+accelerate
+torch
+opencv-python
+langchain_ollama
+ast

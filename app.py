@@ -12,6 +12,7 @@ import time
 from gliner import GLiNER
 import easyocr
 import torch
+from langchain_ollama import OllamaLLM as Ollama
 app = Flask(__name__)
 # device = "cuda" if torch.cuda.is_available() else "cpu"
 device = 'cpu'
@@ -20,13 +21,14 @@ if device == 'cuda':
     torch.cuda.ipc_collect()
 print('device:', device)
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1").to(device)
+gliner_model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1").to(device)
 
 if device == 'cuda':
     reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/", gpu=True)
 else:
     reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/")
 
+llm_model = Ollama(model="llama3.2")
 
 # Folder setup
 UPLOAD_FOLDER = 'uploads'
@@ -86,7 +88,7 @@ def process_in_background(file_path, labels, file_type, filename):
 
         if file_type in ['PDF Document', 'Passport', 'Driving License', 'PAN Card', 'Local Card']:
             print(f'Processing image: {filename}')
-            processed_image = process_image(file_path, labels, model, reader)
+            processed_image = process_image(file_path, labels, gliner_model, reader, llm_model)
             if processed_image is not None:
                 masked_file_path = os.path.join(MASKED_FOLDER, filename)
                 cv2.imwrite(masked_file_path, processed_image)
@@ -94,7 +96,7 @@ def process_in_background(file_path, labels, file_type, filename):
 
         elif file_type == "Audio":
             print(f'Processing audio: {filename}')
-            redacted_text = process_audio(file_path, labels, model)
+            redacted_text = process_audio(file_path, labels, gliner_model, llm_model)
             text_file_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
             print(f'text_file_path: {text_file_path}')
             with open(text_file_path, "w", encoding="utf-8") as text_file:

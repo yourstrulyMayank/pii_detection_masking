@@ -15,7 +15,7 @@ from common_functions import draw_black_rectangles
 
 
 
-def main(image_path, labels, model, reader):
+def main(image_path, labels, gliner_model, reader, llm_model):
     try:
         original_image = cv2.imread(image_path)
         if original_image is None:
@@ -24,7 +24,7 @@ def main(image_path, labels, model, reader):
         result = reader.readtext(image_path, width_ths=0.5)
         processed_image = original_image.copy()
 
-        draw_black_rectangles(processed_image, result, labels, model)
+        draw_black_rectangles(processed_image, result, labels, gliner_model, llm_model)
 
         return processed_image  # Ensure this is a valid image
     except Exception as e:
