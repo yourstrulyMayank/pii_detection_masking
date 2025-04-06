@@ -16,6 +16,8 @@ import ast
 
 import json
 import re
+import json
+import re
 
 def detect_pii_with_llm(text, labels, definitions, llm_model):
     # Build instructions only for provided labels
@@ -30,13 +32,17 @@ def detect_pii_with_llm(text, labels, definitions, llm_model):
     instruction_text = "You are a PII extraction model. Identify and label the following types of PII:\n"
     instruction_text += "\n".join(instructions)
 
-    # Construct prompt (single string!)
-    prompt = f"{instruction_text}\n\n" \
-        +f"Text:\n{text}\n\n"\
-        +'Return only a valid JSON array of the format [{"text": <text>, "label": <label>}] where each entitiy is a string:\n'\
-            +"Do not include code, explanation, or any other text."
-    
+    # Construct prompt (single string)
+    prompt = (
+        f"{instruction_text}\n\n"
+        f"Text:\n{text}\n\n"
+        'Return only a valid JSON dictionary of the format:\n'
+        '{"label1": ["value1", "value2"], "label2": ["value3"]}\n'
+        "Do not include code, explanation, or any other text. Just the dictionary."
+    )
+
     print(prompt)
+
     try:
         # Call the LLM
         response = llm_model.invoke(prompt)
@@ -51,28 +57,39 @@ def detect_pii_with_llm(text, labels, definitions, llm_model):
 
         print("LLM raw response:\n", response_text)
 
-        # Quick sanity check
+        # Sanity check
         if "def " in response_text or "import " in response_text:
             raise ValueError("LLM returned code instead of JSON")
 
-        # Extract valid JSON array using regex
-        match = re.search(r"\[\s*{.*?}\s*\]", response_text, re.DOTALL)
+        # Extract JSON object using regex
+        match = re.search(r"{\s*.*?}", response_text, re.DOTALL)
         if not match:
-            raise ValueError("No valid JSON array found in LLM response")
+            raise ValueError("No valid JSON dictionary found in LLM response")
 
         json_str = match.group(0)
-        result = json.loads(json_str)
+        result_dict = json.loads(json_str)
 
     except Exception as e:
         print("Failed to parse LLM response:", e)
-        result = []
+        result_dict = {}
 
-    # Return clean list of (text, label) tuples
-    return [
-        (entity['text'], entity['label'])
-        for entity in result
-        if isinstance(entity, dict) and 'text' in entity and 'label' in entity
+    # Convert dict to list of (text, label) tuples
+    # result = []
+    # for label, values in result_dict.items():
+    #     if isinstance(values, list):
+    #         for val in values:
+    #             result.append((val, label))
+
+    # Convert to list of (text, label) tuples, making sure all values are strings
+    result = [
+        (str(entity_text), label)
+        for label, entities in result_dict.items()
+        if isinstance(entities, list)
+        for entity_text in entities
+        if isinstance(entity_text, (str, int, float))
     ]
+
+    return result
 
 
 
@@ -130,21 +147,53 @@ def redact_pii(text, labels, gliner_model, llm_model):
     return redacted_text
 
 
+# def draw_black_rectangles(image, detections, labels, gliner_model, llm_model):
+#     font = cv2.FONT_HERSHEY_SIMPLEX
+#     thickness = 1
+#     tolerance = 0.05
+
+#     for detection in detections:
+#         coordinates, text, confidence = detection
+#         top_left = (int(coordinates[0][0]), int(coordinates[0][1]))
+#         bottom_right = (int(coordinates[2][0]), int(coordinates[2][1]))
+
+#         pii_entities = identify_pii(text, labels, gliner_model, llm_model)
+#         if pii_entities:
+#             for entity, entity_type in pii_entities:
+#                 entity_start = text.find(entity)
+#                 entity_end = entity_start + len(entity)
+
+#                 entity_start_fraction = entity_start / len(text)
+#                 entity_end_fraction = entity_end / len(text)
+
+#                 entity_start_x = int(top_left[0] + (bottom_right[0] - top_left[0]) * entity_start_fraction)
+#                 entity_end_x = int(top_left[0] + (bottom_right[0] - top_left[0]) * entity_end_fraction)
+
+#                 entity_start_x = max(top_left[0], int(entity_start_x - (bottom_right[0] - top_left[0]) * tolerance))
+#                 entity_end_x = min(bottom_right[0], int(entity_end_x + (bottom_right[0] - top_left[0]) * tolerance))
+
+#                 cv2.rectangle(image, (entity_start_x, top_left[1]), (entity_end_x, bottom_right[1]), (0, 0, 0), thickness=-1)
+
+
+
 def draw_black_rectangles(image, detections, labels, gliner_model, llm_model):
     font = cv2.FONT_HERSHEY_SIMPLEX
     thickness = 1
     tolerance = 0.05
+
+    # Combine all text into one string for LLM-based PII detection
+    full_text = " ".join([d[1] for d in detections])
+    pii_entities = identify_pii(full_text, labels, gliner_model, llm_model)
 
     for detection in detections:
         coordinates, text, confidence = detection
         top_left = (int(coordinates[0][0]), int(coordinates[0][1]))
         bottom_right = (int(coordinates[2][0]), int(coordinates[2][1]))
 
-        pii_entities = identify_pii(text, labels, gliner_model, llm_model)
-        if pii_entities:
-            for entity, entity_type in pii_entities:
-                entity_start = text.find(entity)
-                entity_end = entity_start + len(entity)
+        for pii_text, pii_label in pii_entities:
+            if pii_text in text:
+                entity_start = text.find(pii_text)
+                entity_end = entity_start + len(pii_text)
 
                 entity_start_fraction = entity_start / len(text)
                 entity_end_fraction = entity_end / len(text)
@@ -155,4 +204,5 @@ def draw_black_rectangles(image, detections, labels, gliner_model, llm_model):
                 entity_start_x = max(top_left[0], int(entity_start_x - (bottom_right[0] - top_left[0]) * tolerance))
                 entity_end_x = min(bottom_right[0], int(entity_end_x + (bottom_right[0] - top_left[0]) * tolerance))
 
+                # Black rectangle over detected PII
                 cv2.rectangle(image, (entity_start_x, top_left[1]), (entity_end_x, bottom_right[1]), (0, 0, 0), thickness=-1)
