@@ -3,10 +3,11 @@ from werkzeug.utils import secure_filename
 from image import main as process_image
 from document import main as process_document
 from audio import main as process_audio
-# from excel import main as process_excel
+from excel import  process_excel
 # from database import main as process_database
 import os
 import cv2
+import pandas as pd
 import threading
 import time
 from gliner import GLiNER
@@ -103,9 +104,9 @@ def process_in_background(file_path, labels, file_type, filename):
                 text_file.write(redacted_text)
             processed_file = text_file_path
 
-        # elif file_type == "Excel File":
-        #     print(f'Processing Excel file: {filename}')
-        #     processed_file = process_excel(file_path)
+        elif file_type == "Excel File":
+            print(f'Processing Excel file: {filename}')
+            processed_file = process_excel(file_path, labels, gliner_model, llm_model)
 
         # elif file_type == "Database Extract":
         #     print(f'Processing database extract: {filename}')
@@ -153,7 +154,13 @@ def check_status(filename):
                     redacted_text = text_file.read()
             return jsonify({"status": "done", "redirect": url_for('result_audio', filename=filename, original_file_url=original_file_url, redacted_text=redacted_text)})
         elif file_type == "Excel File":
-            return jsonify({"status": "done", "redirect": url_for('result_excel', filename=filename)})
+            redacted_file_url = os.path.join(MASKED_FOLDER, filename.replace(".xlsx", "_redacted.xlsx"))
+            return jsonify({
+                "status": "done",
+                "redirect": url_for('result_excel', filename=filename.replace(".xlsx", "_redacted.xlsx")),
+                "original_file_url": '/' + original_file_url,
+                "masked_file_url": '/' + redacted_file_url.replace("\\", "/").lstrip('/')
+            })
         elif file_type == "Database Extract":
             return jsonify({"status": "done", "redirect": url_for('result_database', filename=filename)})
         elif file_type == "Text Document":
@@ -227,8 +234,15 @@ def result_audio(filename):
 
 @app.route('/result_excel/<filename>')
 def result_excel(filename):
-    """Display result page for Excel file processing."""
-    return render_template('result_excel.html', filename=filename)
+    masked_path = os.path.join(MASKED_FOLDER, filename)
+    table_html = ""
+    try:
+        df = pd.read_excel(masked_path)
+        table_html = df.to_html(classes='excel-table', index=False, border=0)
+    except Exception as e:
+        print("Could not render preview:", e)
+    
+    return render_template('result_excel.html', filename=filename, table_html=table_html)
 
 @app.route('/result_database/<filename>')
 def result_database(filename):

@@ -18,4 +18,5 @@ accelerate
 torch
 opencv-python
 langchain_ollama
-ast
+openpyxl
+pandas
