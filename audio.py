@@ -29,7 +29,7 @@ os.environ["PATH"] = ffmpeg_relative_path + os.pathsep + os.environ["PATH"]
 os.system("ffmpeg -version")
 
 # Main function to handle audio file input
-def main(audio_file_path, labels, gliner_model, llm_model):
+def main(audio_file_path, labels, gliner_model, llm_model, spacy_model):
     # Load GLiNER model for PII detection
     ## Try to download it in setup.sh
     
@@ -89,7 +89,7 @@ def main(audio_file_path, labels, gliner_model, llm_model):
     
     
     # Redact any PII from the transcribed text
-    redacted_text = redact_pii(transcribed_text, labels, gliner_model, llm_model)
+    redacted_text = redact_pii(transcribed_text, labels, gliner_model, llm_model, spacy_model)
     
     return redacted_text
 

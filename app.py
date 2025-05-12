@@ -14,20 +14,52 @@ from gliner import GLiNER
 import easyocr
 import torch
 from langchain_ollama import OllamaLLM as Ollama
+import spacy
+import subprocess
+import importlib.util
 app = Flask(__name__)
 # device = "cuda" if torch.cuda.is_available() else "cpu"
-device = 'cpu'
-if device == 'cuda':
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
-print('device:', device)
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-gliner_model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1").to(device)
+# device = 'cpu'
+# if device == 'cuda':
+#     torch.cuda.empty_cache()
+#     torch.cuda.ipc_collect()
+# print('device:', device)
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+# gliner_model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1", use_fast=False).to(device)
 
-if device == 'cuda':
-    reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/", gpu=True)
-else:
-    reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/")
+def get_gliner_model(local_path="models/gliner_medium-v2.1", model_name="urchade/gliner_medium-v2.1"):
+    # If model already exists locally, load from disk
+    if os.path.exists(local_path) and os.path.isdir(local_path):
+        print(f"Loading GLiNER model from local path: {local_path}")
+        model = GLiNER.from_pretrained(local_path)
+    else:
+        # Download from Hugging Face and save locally
+        print(f"Downloading GLiNER model '{model_name}' and saving to {local_path}")
+        model = GLiNER.from_pretrained(model_name)
+        os.makedirs(local_path, exist_ok=True)
+        model.save_pretrained(local_path)
+    return model
+
+def get_spacy_model(model_name="en_core_web_sm"):
+    # Check if the model is already installed
+    model_spec = importlib.util.find_spec(model_name)
+    if model_spec is None:
+        print(f"Downloading and installing SpaCy model: {model_name}")
+        subprocess.run(["python", "-m", "spacy", "download", model_name], check=True)
+    else:
+        print(f"SpaCy model '{model_name}' already installed.")
+
+    # Load the model
+    return spacy.load(model_name)
+
+gliner_model = get_gliner_model()
+spacy_model = get_spacy_model()
+# gliner_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1", use_fast=False).to(device)
+
+# if device == 'cuda':
+#     reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/", gpu=True)
+# else:
+reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/")
 
 llm_model = Ollama(model="llama3.2")
 
@@ -89,7 +121,7 @@ def process_in_background(file_path, labels, file_type, filename):
 
         if file_type in ['PDF Document', 'Passport', 'Driving License', 'PAN Card', 'Local Card']:
             print(f'Processing image: {filename}')
-            processed_image = process_image(file_path, labels, gliner_model, reader, llm_model)
+            processed_image = process_image(file_path, labels, gliner_model, reader, llm_model, spacy_model)
             if processed_image is not None:
                 masked_file_path = os.path.join(MASKED_FOLDER, filename)
                 cv2.imwrite(masked_file_path, processed_image)
@@ -97,7 +129,7 @@ def process_in_background(file_path, labels, file_type, filename):
 
         elif file_type == "Audio":
             print(f'Processing audio: {filename}')
-            redacted_text = process_audio(file_path, labels, gliner_model, llm_model)
+            redacted_text = process_audio(file_path, labels, gliner_model, llm_model, spacy_model)
             text_file_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
             print(f'text_file_path: {text_file_path}')
             with open(text_file_path, "w", encoding="utf-8") as text_file:
@@ -106,7 +138,7 @@ def process_in_background(file_path, labels, file_type, filename):
 
         elif file_type == "Excel File":
             print(f'Processing Excel file: {filename}')
-            processed_file = process_excel(file_path, labels, gliner_model, llm_model)
+            processed_file = process_excel(file_path, labels, gliner_model, llm_model, spacy_model)
 
         # elif file_type == "Database Extract":
         #     print(f'Processing database extract: {filename}')

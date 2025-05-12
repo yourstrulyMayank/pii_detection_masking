@@ -4,7 +4,7 @@ import cv2
 import ast
 import re
 # Load SpaCy
-nlp = spacy.load('en_core_web_sm')
+# nlp = spacy.load('en_core_web_sm')
 
 
 def load_definitions(file_path="definitions.json"):
@@ -123,10 +123,10 @@ def detect_pii_with_llm(text, labels, definitions, llm_model):
 #     return [(entity['text'], entity['label']) for entity in result if 'text' in entity and 'label' in entity]
 
 
-def identify_pii(text, labels, gliner_model, llm_model):
+def identify_pii(text, labels, gliner_model, llm_model, spacy_model):
     definitions = load_definitions()
 
-    pii_entities_spacy = [(ent.text, ent.label_) for ent in nlp(text).ents if ent.label_ in labels]
+    pii_entities_spacy = [(ent.text, ent.label_) for ent in spacy_model(text).ents if ent.label_ in labels]
 
     gliner_entities = gliner_model.predict_entities(text, labels)
     pii_entities_gliner = [(entity["text"], entity["label"]) for entity in gliner_entities]
@@ -137,9 +137,9 @@ def identify_pii(text, labels, gliner_model, llm_model):
     return pii_entities
 
 
-def redact_pii(text, labels, gliner_model, llm_model):
+def redact_pii(text, labels, gliner_model, llm_model, spacy_model):
     redacted_text = text
-    pii_entities = identify_pii(text, labels, gliner_model, llm_model)
+    pii_entities = identify_pii(text, labels, gliner_model, llm_model, spacy_model)
 
     for ent_text, ent_label in pii_entities:
         redacted_text = redacted_text.replace(ent_text, f"<{ent_label}>")
@@ -176,14 +176,14 @@ def redact_pii(text, labels, gliner_model, llm_model):
 
 
 
-def draw_black_rectangles(image, detections, labels, gliner_model, llm_model):
+def draw_black_rectangles(image, detections, labels, gliner_model, llm_model, spacy_model):
     font = cv2.FONT_HERSHEY_SIMPLEX
     thickness = 1
     tolerance = 0.05
 
     # Combine all text into one string for LLM-based PII detection
     full_text = " ".join([d[1] for d in detections])
-    pii_entities = identify_pii(full_text, labels, gliner_model, llm_model)
+    pii_entities = identify_pii(full_text, labels, gliner_model, llm_model, spacy_model)
 
     for detection in detections:
         coordinates, text, confidence = detection
