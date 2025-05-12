@@ -12,13 +12,16 @@ import sys
 import numpy as np
 from gliner import GLiNER
 from common_functions import draw_black_rectangles
+from logger_utils import setup_logger
 
+logger = setup_logger()
 
 
 def main(image_path, labels, gliner_model, reader, llm_model, spacy_model):
     try:
         original_image = cv2.imread(image_path)
         if original_image is None:
+            logger.error(f"Image not found at {image_path}")
             raise FileNotFoundError(f"Image not found at {image_path}")
 
         result = reader.readtext(image_path, width_ths=0.5)
@@ -28,7 +31,7 @@ def main(image_path, labels, gliner_model, reader, llm_model, spacy_model):
 
         return processed_image  # Ensure this is a valid image
     except Exception as e:
-        print(f"Error in image processing: {e}")
+        logger.error(f"Error in image processing: {e}")
         return None
 
 

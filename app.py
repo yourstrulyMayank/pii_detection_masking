@@ -3,293 +3,221 @@ from werkzeug.utils import secure_filename
 from image import main as process_image
 from document import main as process_document
 from audio import main as process_audio
-from excel import  process_excel
-# from database import main as process_database
+from excel import process_excel
+from gliner import GLiNER
+from logger_utils import setup_logger
+from langchain_ollama import OllamaLLM as Ollama
+import easyocr
+import spacy
+import subprocess
+import importlib.util
 import os
 import cv2
 import pandas as pd
 import threading
 import time
-from gliner import GLiNER
-import easyocr
-import torch
-from langchain_ollama import OllamaLLM as Ollama
-import spacy
-import subprocess
-import importlib.util
+
+# ──────────────────────────────
+# Configuration and Initialization
+# ──────────────────────────────
 app = Flask(__name__)
-# device = "cuda" if torch.cuda.is_available() else "cpu"
-# device = 'cpu'
-# if device == 'cuda':
-#     torch.cuda.empty_cache()
-#     torch.cuda.ipc_collect()
-# print('device:', device)
-# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-# gliner_model = GLiNER.from_pretrained("urchade/gliner_multi_pii-v1", use_fast=False).to(device)
 
-def get_gliner_model(local_path="models/gliner_medium-v2.1", model_name="urchade/gliner_medium-v2.1"):
-    # If model already exists locally, load from disk
-    if os.path.exists(local_path) and os.path.isdir(local_path):
-        print(f"Loading GLiNER model from local path: {local_path}")
-        model = GLiNER.from_pretrained(local_path)
-    else:
-        # Download from Hugging Face and save locally
-        print(f"Downloading GLiNER model '{model_name}' and saving to {local_path}")
-        model = GLiNER.from_pretrained(model_name)
-        os.makedirs(local_path, exist_ok=True)
-        model.save_pretrained(local_path)
-    return model
-
-def get_spacy_model(model_name="en_core_web_sm"):
-    # Check if the model is already installed
-    model_spec = importlib.util.find_spec(model_name)
-    if model_spec is None:
-        print(f"Downloading and installing SpaCy model: {model_name}")
-        subprocess.run(["python", "-m", "spacy", "download", model_name], check=True)
-    else:
-        print(f"SpaCy model '{model_name}' already installed.")
-
-    # Load the model
-    return spacy.load(model_name)
-
-gliner_model = get_gliner_model()
-spacy_model = get_spacy_model()
-# gliner_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1", use_fast=False).to(device)
-
-# if device == 'cuda':
-#     reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/", gpu=True)
-# else:
-reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/")
-
-llm_model = Ollama(model="llama3.2")
-
-# Folder setup
 UPLOAD_FOLDER = 'uploads'
 MASKED_FOLDER = os.path.join(UPLOAD_FOLDER, 'masked')
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(MASKED_FOLDER, exist_ok=True)
 
-processing_status = {}  # Track processing status
+processing_status = {}
+logger = setup_logger()
 
+# ──────────────────────────────
+# Model Loading
+# ──────────────────────────────
+def get_gliner_model(local_path="models/gliner_medium-v2.1", model_name="urchade/gliner_medium-v2.1"):
+    if os.path.isdir(local_path):
+        logger.info(f"Loading GLiNER model from local path: {local_path}")
+        return GLiNER.from_pretrained(local_path)
+    logger.info(f"Downloading GLiNER model from Hugging Face: {model_name}")
+    model = GLiNER.from_pretrained(model_name)
+    os.makedirs(local_path, exist_ok=True)
+    model.save_pretrained(local_path)
+    return model
+
+def get_spacy_model(model_name="en_core_web_sm"):
+    if not importlib.util.find_spec(model_name):
+        logger.info(f"Downloading SpaCy model: {model_name}")
+        subprocess.run(["python", "-m", "spacy", "download", model_name], check=True)
+    logger.info(f"Loading SpaCy model: {model_name}")
+    return spacy.load(model_name)
+
+logger.info("Initializing models...")
+gliner_model = get_gliner_model()
+spacy_model = get_spacy_model()
+reader = easyocr.Reader(['en'], model_storage_directory="./models/easyocr/")
+llm_model = Ollama(model="llama3.2")
+logger.info("Models initialized successfully.")
+
+# ──────────────────────────────
+# Routes
+# ──────────────────────────────
 @app.route('/')
 def index():
-    """Render the landing page."""
+    logger.info("Accessed index route.")
     return render_template('index.html')
 
 @app.route('/process', methods=['POST'])
 def process_file():
-    """Handle file upload and initiate processing."""
     file = request.files.get('file')
     file_type = request.form.get('file_type')
     labels = request.form.getlist('labels')
     custom_labels = request.form.get('custom_labels', '')
-
-    print(f"Received file type: {file_type}")
 
     if custom_labels:
         labels.extend(custom_labels.split(','))
 
     if file:
         filename = secure_filename(file.filename)
-        original_file_path = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(original_file_path)
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(file_path)
+        logger.info(f"File uploaded: {filename}, Type: {file_type}, Labels: {labels}")
 
         processing_status[filename] = "processing"
 
-        # Start processing in a separate thread
-        thread = threading.Thread(target=process_in_background, args=(original_file_path, labels, file_type, filename))
+        thread = threading.Thread(target=process_in_background, args=(file_path, labels, file_type, filename))
         thread.start()
 
+        logger.info(f"Started background processing thread for: {filename}")
         return redirect(url_for('processing', filename=filename))
-
+    
+    logger.warning("No file received in request.")
     return redirect(url_for('index'))
 
 @app.route('/processing/<filename>')
 def processing(filename):
-    """Show processing page while the file is being processed."""
+    logger.info(f"Rendering processing page for: {filename}")
     return render_template('processing.html', filename=filename)
-
-def process_in_background(file_path, labels, file_type, filename):
-    """Process the file in the background and update status."""
-    print(f'Processing {file_type}: {filename}')
-    processing_status[f"{filename}_type"] = file_type
-    try:
-        time.sleep(2)  # Simulate processing delay
-
-        processed_file = None
-
-        if file_type in ['PDF Document', 'Passport', 'Driving License', 'PAN Card', 'Local Card']:
-            print(f'Processing image: {filename}')
-            processed_image = process_image(file_path, labels, gliner_model, reader, llm_model, spacy_model)
-            if processed_image is not None:
-                masked_file_path = os.path.join(MASKED_FOLDER, filename)
-                cv2.imwrite(masked_file_path, processed_image)
-                processed_file = masked_file_path
-
-        elif file_type == "Audio":
-            print(f'Processing audio: {filename}')
-            redacted_text = process_audio(file_path, labels, gliner_model, llm_model, spacy_model)
-            text_file_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
-            print(f'text_file_path: {text_file_path}')
-            with open(text_file_path, "w", encoding="utf-8") as text_file:
-                text_file.write(redacted_text)
-            processed_file = text_file_path
-
-        elif file_type == "Excel File":
-            print(f'Processing Excel file: {filename}')
-            processed_file = process_excel(file_path, labels, gliner_model, llm_model, spacy_model)
-
-        # elif file_type == "Database Extract":
-        #     print(f'Processing database extract: {filename}')
-        #     processed_file = process_database(file_path)
-
-        elif file_type == "Text Document":
-            print(f'Processing document: {filename}')
-            processed_file = process_document(file_path)
-
-        else:
-            raise ValueError("Unsupported file type")
-
-        if processed_file is None:
-            raise ValueError(f"Processing failed for {filename}")
-
-        processing_status[filename] = "done"
-
-    except Exception as e:
-        print(f"Error processing file {filename}: {e}")
-        processing_status[filename] = "failed"
 
 @app.route('/check_status/<filename>')
 def check_status(filename):
-    """Check processing status and redirect accordingly."""
     status = processing_status.get(filename, "processing")
-    
+    logger.info(f"Status check for {filename}: {status}")
+
     if status == "done":
         file_type = processing_status.get(f"{filename}_type", "Unknown")
-        original_file_url = os.path.join(UPLOAD_FOLDER, filename)
-        masked_file_url = os.path.join(MASKED_FOLDER, filename)
-
-        # Ensure paths use forward slashes for URLs
-        original_file_url = '/' + original_file_url.replace("\\", "/").lstrip('/')
-        masked_file_url = '/' + masked_file_url.replace("\\", "/").lstrip('/')
+        original_file_url = '/' + os.path.join(UPLOAD_FOLDER, filename).replace("\\", "/").lstrip('/')
+        masked_file_url = '/' + os.path.join(MASKED_FOLDER, filename).replace("\\", "/").lstrip('/')
 
         if file_type in ['PDF Document', 'Passport', 'Driving License', 'PAN Card', 'Local Card']:
-            return jsonify({"status": "done", "redirect": url_for('result_image', filename=filename, 
-                                                                  original_file_url=original_file_url, 
+            return jsonify({"status": "done", "redirect": url_for('result_image', filename=filename,
+                                                                  original_file_url=original_file_url,
                                                                   masked_file_url=masked_file_url)})
         elif file_type == "Audio":
-            text_file_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
-            redacted_text = ""
-            if os.path.exists(text_file_path):
-                with open(text_file_path, "r", encoding="utf-8") as text_file:
-                    redacted_text = text_file.read()
-            return jsonify({"status": "done", "redirect": url_for('result_audio', filename=filename, original_file_url=original_file_url, redacted_text=redacted_text)})
+            text_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
+            with open(text_path, "r", encoding="utf-8") as f:
+                redacted_text = f.read()
+            return jsonify({"status": "done", "redirect": url_for('result_audio', filename=filename,
+                                                                  original_file_url=original_file_url,
+                                                                  redacted_text=redacted_text)})
         elif file_type == "Excel File":
-            redacted_file_url = os.path.join(MASKED_FOLDER, filename.replace(".xlsx", "_redacted.xlsx"))
-            return jsonify({
-                "status": "done",
-                "redirect": url_for('result_excel', filename=filename.replace(".xlsx", "_redacted.xlsx")),
-                "original_file_url": '/' + original_file_url,
-                "masked_file_url": '/' + redacted_file_url.replace("\\", "/").lstrip('/')
-            })
-        elif file_type == "Database Extract":
-            return jsonify({"status": "done", "redirect": url_for('result_database', filename=filename)})
+            redacted_url = '/' + os.path.join(MASKED_FOLDER, filename.replace(".xlsx", "_redacted.xlsx")).replace("\\", "/").lstrip('/')
+            return jsonify({"status": "done",
+                            "redirect": url_for('result_excel', filename=filename.replace(".xlsx", "_redacted.xlsx")),
+                            "original_file_url": original_file_url,
+                            "masked_file_url": redacted_url})
         elif file_type == "Text Document":
             return jsonify({"status": "done", "redirect": url_for('result_text', filename=filename)})
-        else:
-            return jsonify({"status": "error", "message": "Unknown file type"})
+        return jsonify({"status": "error", "message": "Unknown file type"})
 
-    elif status == "failed":
+    if status == "failed":
+        logger.error(f"Processing failed for {filename}")
         return jsonify({"status": "failed", "message": "Processing failed. Please try again."})
 
     return jsonify({"status": "processing"})
 
-
-# @app.route('/result')
-# def result(filename, file_type):
-#     """Redirect to the appropriate result page based on file type."""
-#     file_type = request.args.get('file_type')
-#     if not file_type:
-#         file_type = processing_status.get(f"{filename}_type", "Unknown")
-#     original_file_url = os.path.join(UPLOAD_FOLDER, filename)
-#     masked_file_url = os.path.join(MASKED_FOLDER, filename)
-
-#     if file_type in ['PDF Document', 'Passport', 'Driving License', 'PAN Card', 'Local Card']:
-#         return redirect(url_for('result_image', filename=filename, original_file_url=original_file_url, 
-#                                 masked_file_url=masked_file_url))
-#     elif file_type == "Audio":
-#         return redirect(url_for('result_audio', filename=filename))
-#     elif file_type == "Excel File":
-#         return redirect(url_for('result_excel', filename=filename))
-#     elif file_type == "Database Extract":
-#         return redirect(url_for('result_database', filename=filename))
-#     elif file_type == "Text Document":
-#         return redirect(url_for('result_text', filename=filename))
-#     else:
-#         return "Unknown file type"
-
 @app.route('/result_image/<filename>')
 def result_image(filename):
-    """Display result page for image processing."""
-    original_file_url = request.args.get('original_file_url', '').lstrip('/')
-    masked_file_url = request.args.get('masked_file_url', '').lstrip('/')
+    logger.info(f"Rendering image result page for: {filename}")
+    return render_template('result_image.html',
+                           filename=filename,
+                           original_file_url=request.args.get('original_file_url', ''),
+                           masked_file_url=request.args.get('masked_file_url', ''))
 
-    # Ensure paths start with "/"
-    original_file_url = '/' + original_file_url
-    masked_file_url = '/' + masked_file_url
-
-    return render_template('result_image.html', filename=filename, 
-                           original_file_url=original_file_url, 
-                           masked_file_url=masked_file_url)
-
-
-# @app.route('/result_audio/<filename>')
-# def result_audio(filename):
-#     """Display result page for audio processing."""
-#     return render_template('result_audio.html', filename=filename)
 @app.route('/result_audio/<filename>')
 def result_audio(filename):
-    """Display result page for audio processing."""
-    original_file_url = os.path.join(UPLOAD_FOLDER, filename)
-    text_file_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
-    
+    logger.info(f"Rendering audio result page for: {filename}")
+    original_file_url = '/' + os.path.join(UPLOAD_FOLDER, filename).replace("\\", "/").lstrip('/')
+    text_path = os.path.join(MASKED_FOLDER, f"{filename}.txt")
     redacted_text = ""
-    if os.path.exists(text_file_path):
-        with open(text_file_path, "r", encoding="utf-8") as text_file:
-            redacted_text = text_file.read()
-
-    return render_template('result_audio.html', filename=filename, 
-                           original_file_url="/" + original_file_url.replace("\\", "/").lstrip('/'), 
+    if os.path.exists(text_path):
+        with open(text_path, "r", encoding="utf-8") as f:
+            redacted_text = f.read()
+    return render_template('result_audio.html', filename=filename,
+                           original_file_url=original_file_url,
                            redacted_text=redacted_text)
-
 
 @app.route('/result_excel/<filename>')
 def result_excel(filename):
-    masked_path = os.path.join(MASKED_FOLDER, filename)
-    table_html = ""
+    logger.info(f"Rendering Excel result page for: {filename}")
     try:
-        df = pd.read_excel(masked_path)
+        df = pd.read_excel(os.path.join(MASKED_FOLDER, filename))
         table_html = df.to_html(classes='excel-table', index=False, border=0)
     except Exception as e:
-        print("Could not render preview:", e)
-    
+        logger.exception("Error rendering Excel result")
+        table_html = ""
     return render_template('result_excel.html', filename=filename, table_html=table_html)
-
-@app.route('/result_database/<filename>')
-def result_database(filename):
-    """Display result page for database JSON processing."""
-    return render_template('result_database.html', filename=filename)
 
 @app.route('/result_text/<filename>')
 def result_text(filename):
-    """Display result page for text document processing."""
+    logger.info(f"Rendering text result page for: {filename}")
     return render_template('result_text.html', filename=filename)
 
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
-    return send_from_directory('uploads', filename)
+    logger.info(f"Serving uploaded file: {filename}")
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
+# ──────────────────────────────
+# Background Processing Function
+# ──────────────────────────────
+def process_in_background(file_path, labels, file_type, filename):
+    logger.info(f"Started processing file: {filename}, Type: {file_type}")
+    processing_status[f"{filename}_type"] = file_type
 
+    try:
+        time.sleep(2)  # Simulated delay
+        processed_file = None
+
+        if file_type in ['PDF Document', 'Passport', 'Driving License', 'PAN Card', 'Local Card']:
+            processed_image = process_image(file_path, labels, gliner_model, reader, llm_model, spacy_model)
+            if processed_image is not None:
+                cv2.imwrite(os.path.join(MASKED_FOLDER, filename), processed_image)
+                processed_file = True
+
+        elif file_type == "Audio":
+            redacted_text = process_audio(file_path, labels, gliner_model, llm_model, spacy_model)
+            with open(os.path.join(MASKED_FOLDER, f"{filename}.txt"), "w", encoding="utf-8") as f:
+                f.write(redacted_text)
+            processed_file = True
+
+        elif file_type == "Excel File":
+            processed_file = process_excel(file_path, labels, gliner_model, llm_model, spacy_model)
+
+        elif file_type == "Text Document":
+            processed_file = process_document(file_path)
+
+        if not processed_file:
+            raise ValueError("Processing failed")
+
+        processing_status[filename] = "done"
+        logger.info(f"Finished processing: {filename}")
+
+    except Exception as e:
+        processing_status[filename] = "failed"
+        logger.exception(f"Exception occurred while processing {filename}")
+
+# ──────────────────────────────
+# Main Entry Point
+# ──────────────────────────────
 if __name__ == '__main__':
+    logger.info("Starting Flask app...")
     app.run(debug=True)
